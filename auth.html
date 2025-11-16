@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Sign Up - DevDate</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Animation Libraries -->
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.29/dist/lenis.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+</head>
+<body>
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="container">
+        <div class="auth-box">
+            <h1 class="logo">👨‍💻 DevDate</h1>
+            <p class="tagline">Connect. Collaborate. Create.</p>
+
+            <!-- Login Form -->
+            <div id="login-form" style="display: block;">
+                <h2>Login</h2>
+                <div class="form-group">
+                    <input type="email" id="login-email" placeholder="Email" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+                </div>
+                <div class="error-message" id="login-error" style="display: none;"></div>
+                <button onclick="login()" class="btn btn-primary">Login</button>
+                
+                <p style="text-align: center; margin: 10px 0;">
+                    <a href="#" onclick="event.preventDefault(); resetPassword();" style="color: #667eea; font-size: 14px;">Forgot Password?</a>
+                </p>
+                
+                <div class="divider">OR</div>
+                
+                <button onclick="loginWithGoogle()" class="btn btn-google">
+                    <i class="fab fa-google"></i> Continue with Google
+                </button>
+                <button onclick="loginWithGithub()" class="btn btn-github">
+                    <i class="fab fa-github"></i> Continue with GitHub
+                </button>
+                
+                <p class="auth-switch">
+                    Don't have an account? <a href="#" onclick="showSignup()">Sign Up</a>
+                </p>
+            </div>
+
+            <!-- Signup Form -->
+            <div id="signup-form" style="display: none;">
+                <h2>Sign Up</h2>
+                <div class="form-group">
+                    <input type="text" id="signup-name" placeholder="Full Name" required autocomplete="name">
+                </div>
+                <div class="form-group">
+                    <input type="email" id="signup-email" placeholder="Email" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="signup-password" placeholder="Password (min 6 chars)" required autocomplete="new-password">
+                </div>
+                <div class="error-message" id="signup-error" style="display: none;"></div>
+                <button onclick="signup()" class="btn btn-primary">Sign Up</button>
+                
+                <div class="divider">OR</div>
+                
+                <button onclick="loginWithGoogle()" class="btn btn-google">
+                    <i class="fab fa-google"></i> Continue with Google
+                </button>
+                <button onclick="loginWithGithub()" class="btn btn-github">
+                    <i class="fab fa-github"></i> Continue with GitHub
+                </button>
+                
+                <p class="auth-switch">
+                    Already have an account? <a href="#" onclick="showLogin()">Login</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+    <!-- App Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    
+    <script>
+        // Check if coming from home page - stay on auth page
+        document.addEventListener('DOMContentLoaded', () => {
+            const referrer = document.referrer;
+            if (referrer.includes('home.html') || referrer.includes('index.html')) {
+                console.log('Coming from home page - staying on auth page');
+            }
+            
+            // Initialize smooth scroll
+            const lenis = new Lenis({
+                duration: 1.2,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                smoothWheel: true,
+            });
+            
+            function raf(time) {
+                lenis.raf(time);
+                requestAnimationFrame(raf);
+            }
+            requestAnimationFrame(raf);
+            
+            // Animate auth box entrance
+            anime({
+                targets: '.auth-box',
+                scale: [0.9, 1],
+                opacity: [0, 1],
+                duration: 600,
+                easing: 'easeOutCubic'
+            });
+            
+            // Add ripple effect to buttons
+            document.querySelectorAll('.btn').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    const ripple = document.createElement('span');
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    
+                    ripple.style.cssText = `
+                        position: absolute;
+                        width: ${size}px;
+                        height: ${size}px;
+                        border-radius: 50%;
+                        background: rgba(255, 255, 255, 0.6);
+                        left: ${x}px;
+                        top: ${y}px;
+                        pointer-events: none;
+                    `;
+                    
+                    this.style.position = 'relative';
+                    this.style.overflow = 'hidden';
+                    this.appendChild(ripple);
+                    
+                    anime({
+                        targets: ripple,
+                        scale: [0, 2],
+                        opacity: [1, 0],
+                        duration: 600,
+                        easing: 'easeOutCubic',
+                        complete: () => ripple.remove()
+                    });
+                });
+            });
+        });
+        
+        // Animate form transitions
+        const originalShowSignup = window.showSignup;
+        const originalShowLogin = window.showLogin;
+        
+        window.showSignup = function() {
+            anime({
+                targets: '#login-form',
+                opacity: [1, 0],
+                translateX: [0, -30],
+                duration: 300,
+                easing: 'easeOutCubic',
+                complete: () => {
+                    if (originalShowSignup) originalShowSignup();
+                    anime({
+                        targets: '#signup-form',
+                        opacity: [0, 1],
+                        translateX: [30, 0],
+                        duration: 300,
+                        easing: 'easeOutCubic'
+                    });
+                }
+            });
+        };
+        
+        window.showLogin = function() {
+            anime({
+                targets: '#signup-form',
+                opacity: [1, 0],
+                translateX: [0, 30],
+                duration: 300,
+                easing: 'easeOutCubic',
+                complete: () => {
+                    if (originalShowLogin) originalShowLogin();
+                    anime({
+                        targets: '#login-form',
+                        opacity: [0, 1],
+                        translateX: [-30, 0],
+                        duration: 300,
+                        easing: 'easeOutCubic'
+                    });
+                }
+            });
+        };
+    </script>
+</body>
+</html>

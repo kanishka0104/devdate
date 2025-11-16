@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Your Profile - DevDate</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Animation Libraries -->
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.29/dist/lenis.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+</head>
+<body>
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Profile Setup Container -->
+    <div id="onboarding-container" class="container" style="display: flex;">
+        <div class="onboarding-box">
+            <h2>Complete Your Profile</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 30px;">Tell us about yourself to get started</p>
+
+            <div class="form-group">
+                <label>Profile Photo</label>
+                <input type="file" id="profile-image" accept="image/*" onchange="previewImage(event)">
+                <div id="image-preview" class="image-preview"></div>
+                <small style="color: #999;">Optional - You can add this later</small>
+            </div>
+
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="profile-name" placeholder="Your full name" required>
+            </div>
+
+            <div class="onboarding-grid">
+                <div class="form-group">
+                    <label>Age *</label>
+                    <input type="number" id="profile-age" placeholder="e.g., 25" min="18" max="100" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Gender *</label>
+                    <select id="profile-gender" required>
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="non-binary">Non-Binary</option>
+                        <option value="other">Other</option>
+                        <option value="prefer-not-to-say">Prefer not to say</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Bio *</label>
+                <textarea id="profile-bio" placeholder="Tell us about yourself..." rows="4" required></textarea>
+            </div>
+
+            <div class="onboarding-grid">
+                <div class="form-group">
+                    <label>State *</label>
+                    <input type="text" id="profile-state" placeholder="e.g., California" required>
+                </div>
+
+                <div class="form-group">
+                    <label>City *</label>
+                    <input type="text" id="profile-city" placeholder="e.g., San Francisco" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Profession *</label>
+                <input type="text" id="profile-profession" placeholder="e.g., Full Stack Developer" required>
+            </div>
+
+            <div class="form-group">
+                <label>Skills *</label>
+                <div class="tag-input">
+                    <input type="text" id="skill-input" placeholder="Add a skill (e.g., JavaScript)" onkeypress="if(event.key==='Enter'){event.preventDefault();addSkill();}">
+                    <button onclick="addSkill()" class="btn-add">Add</button>
+                </div>
+                <div id="skills-container" class="tags"></div>
+                <small style="color: #666;">Add at least 3 skills</small>
+            </div>
+
+            <div class="form-group">
+                <label>Hobbies</label>
+                <div class="tag-input">
+                    <input type="text" id="hobby-input" placeholder="Add a hobby (e.g., Gaming, Reading)" onkeypress="if(event.key==='Enter'){event.preventDefault();addHobby();}">
+                    <button onclick="addHobby()" class="btn-add">Add</button>
+                </div>
+                <div id="hobbies-container" class="tags"></div>
+            </div>
+
+            <div class="form-group">
+                <label>What are you looking for? *</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" value="project" class="looking-for-checkbox"> Find project partners</label>
+                    <label><input type="checkbox" value="mentor" class="looking-for-checkbox"> Find a mentor</label>
+                    <label><input type="checkbox" value="mentee" class="looking-for-checkbox"> Mentor others</label>
+                    <label><input type="checkbox" value="networking" class="looking-for-checkbox"> Networking</label>
+                    <label><input type="checkbox" value="job" class="looking-for-checkbox"> Job opportunities</label>
+                    <label><input type="checkbox" value="collaboration" class="looking-for-checkbox"> Open source collaboration</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fab fa-github"></i> GitHub URL</label>
+                <input type="url" id="github-url" placeholder="https://github.com/username">
+            </div>
+
+            <div class="form-group">
+                <label><i class="fab fa-linkedin"></i> LinkedIn URL</label>
+                <input type="url" id="linkedin-url" placeholder="https://linkedin.com/in/username">
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-file-pdf"></i> Resume (PDF)</label>
+                <input type="file" id="resume-upload" accept=".pdf,application/pdf" onchange="previewResume(event)">
+                <div id="resume-preview" style="margin-top: 10px; color: #666; font-size: 14px;"></div>
+                <small style="color: #999;">Optional - Upload your resume in PDF format (Max 5MB)</small>
+            </div>
+
+            <button onclick="completeProfile()" class="btn btn-primary" id="submit-button" style="width: 100%; margin-top: 20px;">Complete Profile</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+    <!-- App Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/firebase.js"></script>
+    <script src="js/profile.js"></script>
+    
+    <script>
+    // Load existing profile data if in edit mode
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Initialize smooth scroll if Lenis is available
+        if (typeof Lenis !== 'undefined') {
+            const lenis = new Lenis({
+                duration: 1.2,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                smoothWheel: true,
+            });
+            
+            function raf(time) {
+                lenis.raf(time);
+                requestAnimationFrame(raf);
+            }
+            requestAnimationFrame(raf);
+        }
+        
+        // Animate onboarding box entrance
+        if (typeof anime !== 'undefined') {
+            anime({
+                targets: '.onboarding-box',
+                scale: [0.95, 1],
+                opacity: [0, 1],
+                duration: 600,
+                easing: 'easeOutCubic'
+            });
+        
+            // Animate form groups in sequence
+            anime({
+                targets: '.form-group',
+                translateY: [20, 0],
+                opacity: [0, 1],
+                delay: anime.stagger(80, {start: 300}),
+                duration: 500,
+                easing: 'easeOutCubic'
+            });
+        }
+        
+        // Add ripple effect to buttons
+        document.querySelectorAll('.btn, .btn-add').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.cssText = `
+                    position: absolute;
+                    width: ${size}px;
+                    height: ${size}px;
+                    border-radius: 50%;
+                    background: rgba(255, 255, 255, 0.6);
+                    left: ${x}px;
+                    top: ${y}px;
+                    pointer-events: none;
+                `;
+                
+                this.style.position = 'relative';
+                this.style.overflow = 'hidden';
+                this.appendChild(ripple);
+                
+                anime({
+                    targets: ripple,
+                    scale: [0, 2],
+                    opacity: [1, 0],
+                    duration: 600,
+                    easing: 'easeOutCubic',
+                    complete: () => ripple.remove()
+                });
+            });
+        });
+        
+        // Enhance tag additions with animations
+        const originalAddSkill = window.addSkill;
+        const originalAddHobby = window.addHobby;
+        
+        window.addSkill = function() {
+            if (originalAddSkill) originalAddSkill();
+            setTimeout(() => {
+                const tags = document.querySelectorAll('#skills-container .tag');
+                if (tags.length > 0) {
+                    anime({
+                        targets: tags[tags.length - 1],
+                        scale: [0, 1],
+                        duration: 400,
+                        easing: 'easeOutElastic(1, .8)'
+                    });
+                }
+            }, 50);
+        };
+        
+        window.addHobby = function() {
+            if (originalAddHobby) originalAddHobby();
+            setTimeout(() => {
+                const tags = document.querySelectorAll('#hobbies-container .tag');
+                if (tags.length > 0) {
+                    anime({
+                        targets: tags[tags.length - 1],
+                        scale: [0, 1],
+                        duration: 400,
+                        easing: 'easeOutElastic(1, .8)'
+                    });
+                }
+            }, 50);
+        };
+        
+        const editMode = localStorage.getItem('editMode');
+        console.log('🔍 Checking edit mode:', editMode);
+        
+        if (editMode === 'true') {
+            console.log('✅ Edit mode detected, loading existing profile...');
+            
+            // Change page title and button text
+            const heading = document.querySelector('h2');
+            const submitBtn = document.getElementById('submit-button');
+            
+            if (heading) {
+                heading.textContent = 'Edit Your Profile';
+                console.log('✅ Changed title to Edit Your Profile');
+            }
+            if (submitBtn) {
+                submitBtn.textContent = 'Save Changes';
+                console.log('✅ Changed button to Save Changes');
+            }
+            
+            // Wait for auth to be ready
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    console.log('✅ User authenticated:', user.uid);
+                    try {
+                        const docRef = await db.collection('users').doc(user.uid).get();
+                        console.log('✅ Document fetched, exists:', docRef.exists);
+                        
+                        if (docRef.exists) {
+                            const data = docRef.data();
+                            console.log('📋 Loading profile data:', data);
+                            
+                            // Fill in the form with existing data
+                            const nameField = document.getElementById('profile-name');
+                            const ageField = document.getElementById('profile-age');
+                            const genderField = document.getElementById('profile-gender');
+                            const bioField = document.getElementById('profile-bio');
+                            const stateField = document.getElementById('profile-state');
+                            const cityField = document.getElementById('profile-city');
+                            
+                            if (nameField) nameField.value = data.name || '';
+                            if (ageField) ageField.value = data.age || '';
+                            if (genderField) genderField.value = data.gender || '';
+                            if (bioField) bioField.value = data.bio || '';
+                            if (stateField) stateField.value = data.state || '';
+                            if (cityField) cityField.value = data.city || '';
+                            
+                            console.log('✅ Basic fields filled');
+                            document.getElementById('profile-profession').value = data.profession || '';
+                            document.getElementById('github-url').value = data.githubUrl || '';
+                            document.getElementById('linkedin-url').value = data.linkedinUrl || '';
+                            
+                            // Load skills
+                            if (data.skills && data.skills.length > 0) {
+                                profileData.skills = data.skills;
+                                renderTags('skills-container', profileData.skills, 'removeSkill');
+                            }
+                            
+                            // Load hobbies
+                            if (data.hobbies && data.hobbies.length > 0) {
+                                profileData.hobbies = data.hobbies;
+                                renderTags('hobbies-container', profileData.hobbies, 'removeHobby');
+                            }
+                            
+                            // Load lookingFor checkboxes
+                            if (data.lookingFor && data.lookingFor.length > 0) {
+                                data.lookingFor.forEach(value => {
+                                    const checkbox = document.querySelector(`input[value="${value}"]`);
+                                    if (checkbox) checkbox.checked = true;
+                                });
+                            }
+                            
+                            // Show existing profile image if available
+                            if (data.profileImage) {
+                                document.getElementById('image-preview').innerHTML = 
+                                    `<img src="${data.profileImage}" alt="Profile" style="max-width: 200px; max-height: 200px; border-radius: 10px; margin-top: 10px;">`;
+                            }
+                            
+                            // Show existing resume if available
+                            if (data.resumeUrl) {
+                                const resumeName = data.resumeUrl.split('/').pop().split('?')[0];
+                                document.getElementById('resume-preview').innerHTML = 
+                                    `<span style="color: green;">✓ Current resume: <a href="${data.resumeUrl}" target="_blank" style="color: #667eea;">${decodeURIComponent(resumeName)}</a></span>`;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error loading profile:', error);
+                    }
+                }
+            });
+        }
+    });
+    </script>
+</body>
+</html>
