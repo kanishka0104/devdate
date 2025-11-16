@@ -117,13 +117,6 @@
                 <input type="url" id="linkedin-url" placeholder="https://linkedin.com/in/username">
             </div>
 
-            <div class="form-group">
-                <label><i class="fas fa-file-pdf"></i> Resume (PDF)</label>
-                <input type="file" id="resume-upload" accept=".pdf,application/pdf" onchange="previewResume(event)">
-                <div id="resume-preview" style="margin-top: 10px; color: #666; font-size: 14px;"></div>
-                <small style="color: #999;">Optional - Upload your resume in PDF format (Max 5MB)</small>
-            </div>
-
             <button onclick="completeProfile()" class="btn btn-primary" id="submit-button" style="width: 100%; margin-top: 20px;">Complete Profile</button>
         </div>
     </div>
@@ -322,13 +315,6 @@
                             if (data.profileImage) {
                                 document.getElementById('image-preview').innerHTML = 
                                     `<img src="${data.profileImage}" alt="Profile" style="max-width: 200px; max-height: 200px; border-radius: 10px; margin-top: 10px;">`;
-                            }
-                            
-                            // Show existing resume if available
-                            if (data.resumeUrl) {
-                                const resumeName = data.resumeUrl.split('/').pop().split('?')[0];
-                                document.getElementById('resume-preview').innerHTML = 
-                                    `<span style="color: green;">✓ Current resume: <a href="${data.resumeUrl}" target="_blank" style="color: #667eea;">${decodeURIComponent(resumeName)}</a></span>`;
                             }
                         }
                     } catch (error) {

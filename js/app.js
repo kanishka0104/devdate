@@ -1,7 +1,16 @@
 // Main app logic and navigation
 
-// Page navigation
+// Page navigation with debouncing
+let lastPageChange = 0;
+const PAGE_CHANGE_DELAY = 300;
+
 function showPage(pageName) {
+    const now = Date.now();
+    if (now - lastPageChange < PAGE_CHANGE_DELAY) {
+        return; // Prevent rapid page switching
+    }
+    lastPageChange = now;
+    
     // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');

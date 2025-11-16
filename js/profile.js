@@ -85,7 +85,6 @@ let profileData = {
 };
 
 let selectedImageFile = null;
-let selectedResumeFile = null;
 
 // Image upload preview
 window.previewImage = function(event) {
@@ -98,34 +97,6 @@ window.previewImage = function(event) {
                 `<img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 10px; margin-top: 10px;">`;
         };
         reader.readAsDataURL(file);
-    }
-}
-
-// Resume upload preview
-window.previewResume = function(event) {
-    const file = event.target.files[0];
-    const previewDiv = document.getElementById('resume-preview');
-    
-    if (file) {
-        // Validate file type
-        if (file.type !== 'application/pdf') {
-            previewDiv.innerHTML = '<span style="color: red;">❌ Only PDF files are allowed</span>';
-            event.target.value = '';
-            selectedResumeFile = null;
-            return;
-        }
-        
-        // Validate file size (5MB limit)
-        if (file.size > 5 * 1024 * 1024) {
-            previewDiv.innerHTML = '<span style="color: red;">❌ File size must be less than 5MB</span>';
-            event.target.value = '';
-            selectedResumeFile = null;
-            return;
-        }
-        
-        selectedResumeFile = file;
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        previewDiv.innerHTML = `<span style="color: green;">✓ ${file.name} (${fileSizeMB} MB)</span>`;
     }
 }
 
@@ -279,30 +250,6 @@ window.completeProfile = async function() {
             console.log('No profile image selected, continuing without image');
         }
 
-        // Upload resume to Firebase Storage if selected
-        let resumeUrl = '';
-        if (selectedResumeFile) {
-            console.log('Uploading resume to Firebase Storage...');
-            console.log('Resume file details:', {
-                name: selectedResumeFile.name,
-                size: selectedResumeFile.size,
-                type: selectedResumeFile.type
-            });
-            
-            try {
-                const resumeRef = storage.ref(`resumes/${user.uid}/${selectedResumeFile.name}`);
-                const uploadTask = await resumeRef.put(selectedResumeFile);
-                resumeUrl = await uploadTask.ref.getDownloadURL();
-                console.log('✅ Resume uploaded successfully:', resumeUrl);
-            } catch (resumeError) {
-                console.error('❌ Resume upload error:', resumeError);
-                alert('Failed to upload resume. Continuing without resume.');
-                resumeUrl = '';
-            }
-        } else {
-            console.log('No resume selected');
-        }
-
         // Create profile document in Firestore
         const profile = {
             uid: user.uid,
@@ -320,7 +267,6 @@ window.completeProfile = async function() {
             githubUrl: document.getElementById('github-url').value.trim(),
             linkedinUrl: document.getElementById('linkedin-url').value.trim(),
             profileImage: profileImageUrl,
-            resumeUrl: resumeUrl,
             swipedRight: [],
             swipedLeft: [],
             matches: [],

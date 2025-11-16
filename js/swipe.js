@@ -5,26 +5,42 @@ let currentCardIndex = 0;
 let isSwipping = false; // Prevent multiple simultaneous swipes
 
 // Load recommended users
+let lastLoadTime = 0;
+const CACHE_DURATION = 60000; // 1 minute cache
+
 async function loadRecommendations() {
     if (!userProfile) {
         console.error('No user profile loaded');
         return;
     }
     
+    // Use cache if available and recent
+    const now = Date.now();
+    if (recommendedUsers.length > 0 && (now - lastLoadTime) < CACHE_DURATION) {
+        console.log('Using cached recommendations');
+        renderSwipeCards();
+        return;
+    }
+    
     showLoading();
     
     try {
-        const allUsers = await db.collection('users').get();
         const swipedUsers = [
             ...(userProfile.swipedRight || []),
             ...(userProfile.swipedLeft || []),
             ...(userProfile.matches || [])
         ];
 
+        // Limit query to 50 users for better performance
+        const allUsers = await db.collection('users')
+            .where(firebase.firestore.FieldPath.documentId(), '!=', currentUser.uid)
+            .limit(50)
+            .get();
+
         recommendedUsers = [];
         allUsers.forEach(doc => {
-            // Exclude current user, already swiped users, and matched users
-            if (doc.id !== currentUser.uid && !swipedUsers.includes(doc.id)) {
+            // Exclude already swiped users and matched users
+            if (!swipedUsers.includes(doc.id)) {
                 const userData = { id: doc.id, ...doc.data() };
                 // Filter based on preferences
                 if (matchesPreferences(userData)) {
@@ -40,7 +56,8 @@ async function loadRecommendations() {
         })).sort((a, b) => b.score - a.score);
 
         console.log(`Found ${recommendedUsers.length} recommended users`);
-        currentCardIndex = 0; // Reset index when loading new recommendations
+        currentCardIndex = 0;
+        lastLoadTime = now;
         renderSwipeCards();
     } catch (error) {
         console.error('Error loading recommendations:', error);
@@ -128,16 +145,18 @@ function calculateCompatibilityScore(otherUser) {
 }
 
 // Render swipe cards
+const DEBUG_MODE = false; // Set to true for debugging
+
 function renderSwipeCards() {
-    console.log('=== RENDER SWIPE CARDS CALLED ===');
-    console.log('Current index:', currentCardIndex);
-    console.log('Total users:', recommendedUsers.length);
-    console.log('Remaining:', recommendedUsers.length - currentCardIndex);
-    console.log('Current page URL:', window.location.pathname);
+    if (DEBUG_MODE) {
+        console.log('=== RENDER SWIPE CARDS CALLED ===');
+        console.log('Current index:', currentCardIndex);
+        console.log('Total users:', recommendedUsers.length);
+        console.log('Remaining:', recommendedUsers.length - currentCardIndex);
+    }
     
     // Safety check: Only render if we're on app.html
     if (!window.location.pathname.includes('app.html') && window.location.pathname !== '/') {
-        console.warn('Not on app.html page, skipping render');
         return;
     }
     
@@ -147,16 +166,13 @@ function renderSwipeCards() {
         const noMoreCards = document.getElementById('no-more-cards');
         
         if (!deck || !noMoreCards) {
-            console.warn('DOM elements not ready yet, retrying...');
             // Retry with longer delay
             setTimeout(() => {
                 const retryDeck = document.getElementById('swipe-deck');
                 const retryNoMore = document.getElementById('no-more-cards');
                 
                 if (!retryDeck || !retryNoMore) {
-                    console.error('Cannot render cards - DOM elements still missing');
-                    console.error('Current URL:', window.location.href);
-                    console.error('This usually means you are not on the app page yet');
+                    if (DEBUG_MODE) console.error('Cannot render cards - DOM elements missing');
                     return;
                 }
                 
@@ -170,15 +186,14 @@ function renderSwipeCards() {
 }
 
 function renderSwipeCardsInternal(deck, noMoreCards) {
-    console.log('=== RENDERING CARDS (INTERNAL) ===');
+    if (DEBUG_MODE) console.log('=== RENDERING CARDS (INTERNAL) ===');
     
     // Clear the deck completely
-    console.log('Clearing deck...');
     deck.innerHTML = '';
     deck.style.display = 'block';
 
     if (currentCardIndex >= recommendedUsers.length) {
-        console.log('No more cards to show');
+        if (DEBUG_MODE) console.log('No more cards to show');
         noMoreCards.style.display = 'flex';
         deck.style.display = 'none';
         return;
@@ -191,7 +206,7 @@ function renderSwipeCardsInternal(deck, noMoreCards) {
     const remainingCards = recommendedUsers.length - currentCardIndex;
     const cardsToShow = Math.min(3, remainingCards);
     
-    console.log('Will attempt to show', cardsToShow, 'cards');
+    if (DEBUG_MODE) console.log('Will attempt to show', cardsToShow, 'cards');
     
     // Get list of already swiped users and matches for filtering
     const swipedUsers = [
@@ -215,7 +230,7 @@ function renderSwipeCardsInternal(deck, noMoreCards) {
         
         // Ensure user has an ID
         if (!user || !user.id) {
-            console.error('User missing ID at index:', userIndex, user);
+            if (DEBUG_MODE) console.error('User missing ID at index:', userIndex);
             skippedCount++;
             i--;
             continue;
@@ -223,13 +238,13 @@ function renderSwipeCardsInternal(deck, noMoreCards) {
         
         // Skip if user has already been swiped (safety check)
         if (swipedUsers.includes(user.id)) {
-            console.log('Skipping already swiped user:', user.name, user.id);
+            if (DEBUG_MODE) console.log('Skipping already swiped user:', user.name);
             skippedCount++;
             i--;
             continue;
         }
         
-        console.log('Creating card for user:', user.name, 'at position', cardsRendered);
+        if (DEBUG_MODE) console.log('Creating card for user:', user.name, 'at position', cardsRendered);
         
         const cardWrapper = document.createElement('div');
         cardWrapper.className = 'swipe-card';
@@ -239,25 +254,37 @@ function renderSwipeCardsInternal(deck, noMoreCards) {
         cardWrapper.setAttribute('data-user-id', user.id);
         
         if (cardsRendered === 0) {
-            console.log('Setting up swipe gestures for top card');
+            if (DEBUG_MODE) console.log('Setting up swipe gestures for top card');
             setupSwipeGestures(cardWrapper);
         }
 
         // Always show swipe buttons
         window.renderProfileCard(user, cardWrapper, true);
-        deck.appendChild(cardWrapper);
         
-        // Animate card appearance
-        if (window.DevDateAnimations && cardsRendered === 0) {
-            window.DevDateAnimations.animateProfileCard(cardWrapper);
+        // Append to fragment for better performance
+        if (!cardFragment) {
+            var cardFragment = document.createDocumentFragment();
         }
+        cardFragment.appendChild(cardWrapper);
         
         cardsRendered++;
     }
     
-    console.log('=== RENDER COMPLETE ===');
-    console.log('Total cards rendered:', cardsRendered);
-    console.log('Cards skipped:', skippedCount);
+    // Add all cards to DOM at once
+    if (cardFragment) {
+        deck.appendChild(cardFragment);
+        
+        // Animate only the top card after all are added
+        if (window.DevDateAnimations && deck.children.length > 0) {
+            window.DevDateAnimations.animateProfileCard(deck.children[0]);
+        }
+    }
+    
+    if (DEBUG_MODE) {
+        console.log('=== RENDER COMPLETE ===');
+        console.log('Total cards rendered:', cardsRendered);
+        console.log('Cards skipped:', skippedCount);
+    }
     
     // Update currentCardIndex to skip over any swiped users
     if (skippedCount > 0) {
@@ -690,26 +717,32 @@ function goToChat() {
     // If there's a current match user, open their chat
     if (currentMatchUserId) {
         showPage('chat');
+        // Store the ID in a local variable to preserve it
+        const matchUserId = currentMatchUserId;
+        
+        // Clear the global variables immediately
+        currentMatchUserId = null;
+        currentMatchType = null;
+        
         // Increased delay to ensure chat page elements are fully loaded
         setTimeout(() => {
             const chatWindow = document.getElementById('chat-window');
             const chatList = document.getElementById('chat-list');
             
             if (chatWindow && chatList) {
-                openChatWindow(currentMatchUserId);
+                openChatWindow(matchUserId);
             } else {
                 console.error('Chat elements not found, retrying...');
                 setTimeout(() => {
-                    openChatWindow(currentMatchUserId);
+                    openChatWindow(matchUserId);
                 }, 200);
             }
         }, 150);
     } else {
         showPage('chat');
+        currentMatchUserId = null;
+        currentMatchType = null;
     }
-    
-    currentMatchUserId = null;
-    currentMatchType = null;
 }
 
 // Load matches page

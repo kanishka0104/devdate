@@ -5,8 +5,20 @@ let messagesListener = null;
 let isSendingMessage = false;
 
 // Load chat list
+let chatListCache = null;
+let chatListCacheTime = 0;
+const CHAT_CACHE_DURATION = 30000; // 30 seconds
+
 async function loadChatList() {
     const chatList = document.getElementById('chat-list');
+    
+    // Use cache if available
+    const now = Date.now();
+    if (chatListCache && (now - chatListCacheTime) < CHAT_CACHE_DURATION) {
+        chatList.innerHTML = chatListCache;
+        return;
+    }
+    
     chatList.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
     try {
@@ -23,38 +35,37 @@ async function loadChatList() {
             return;
         }
 
-        const chatItems = [];
-        
-        for (const matchId of matchIds) {
+        // Load all matches in parallel for better performance
+        const chatItemsPromises = matchIds.slice(0, 20).map(async (matchId) => {
             try {
-                const userDoc = await db.collection('users').doc(matchId).get();
-                if (!userDoc.exists) continue;
-                
-                const userData = userDoc.data();
                 const matchDocId = [currentUser.uid, matchId].sort().join('_');
                 
-                // Try to get match document, but continue even if it doesn't exist
-                let matchData = {};
-                try {
-                    const matchDoc = await db.collection('matches').doc(matchDocId).get();
-                    if (matchDoc.exists) {
-                        matchData = matchDoc.data();
-                    }
-                } catch (err) {
-                    console.log('No match document for:', matchDocId);
-                }
+                // Load user and match data in parallel
+                const [userDoc, matchDoc] = await Promise.all([
+                    db.collection('users').doc(matchId).get(),
+                    db.collection('matches').doc(matchDocId).get().catch(() => null)
+                ]);
                 
-                chatItems.push({
+                if (!userDoc.exists) return null;
+                
+                const userData = userDoc.data();
+                const matchData = matchDoc?.exists ? matchDoc.data() : {};
+                
+                return {
                     userId: matchId,
                     matchId: matchDocId,
                     userData,
                     lastMessage: matchData.lastMessage || null,
                     lastMessageTime: matchData.lastMessageTime || null
-                });
+                };
             } catch (err) {
                 console.error('Error loading match:', matchId, err);
+                return null;
             }
-        }
+        });
+        
+        const results = await Promise.all(chatItemsPromises);
+        const chatItems = results.filter(item => item !== null)
 
         // Sort by last message time
         chatItems.sort((a, b) => {
@@ -91,10 +102,31 @@ async function loadChatList() {
             
             chatList.appendChild(chatItem);
         });
+        
+        // Cache the rendered HTML
+        chatListCache = chatList.innerHTML;
+        chatListCacheTime = Date.now();
     } catch (error) {
         console.error('Error loading chat list:', error);
         chatList.innerHTML = '<p>Error loading chats</p>';
     }
+}
+
+// Back to chat list
+function backToChats() {
+    // Clean up message listener
+    if (messagesListener) {
+        messagesListener();
+        messagesListener = null;
+    }
+    
+    document.getElementById('chat-window').style.display = 'none';
+    document.getElementById('chat-list').style.display = 'block';
+    activeMatchId = null;
+    
+    // Refresh chat list
+    chatListCache = null; // Invalidate cache
+    loadChatList();
 }
 
 // Open chat window
@@ -192,11 +224,12 @@ function loadMessages() {
         messagesListener();
     }
 
-    // First try to load messages ordered by timestamp
+    // First try to load messages ordered by timestamp (last 100 messages)
     messagesListener = db.collection('matches')
         .doc(activeMatchId)
         .collection('messages')
         .orderBy('timestamp', 'asc')
+        .limitToLast(100)
         .onSnapshot(
             snapshot => {
                 container.innerHTML = '';
