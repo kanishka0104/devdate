@@ -43,6 +43,23 @@ function showPage(pageName) {
                 }
             }, 100);
             break;
+        case 'projects':
+            loadProjectsFeed();
+            break;
+        case 'create-project':
+            initializeProjectsPage();
+            loadUserSkillsForProjects();
+            loadTechStackOptions();
+            break;
+        case 'project-details':
+            // Already loaded when navigating
+            break;
+        case 'project-requests':
+            // Already loaded when navigating
+            break;
+        case 'my-requests':
+            loadMyRequests();
+            break;
         case 'matches':
             loadMatches();
             break;
@@ -103,6 +120,47 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             console.log('Loading recommendations...');
             loadRecommendations();
+            
+            // Initialize projects page elements
+            initializeProjectsPage();
+            
+            // Populate filter skills (common skills)
+            populateFilterSkills();
+            populateFilterTechStack();
         }, 300);
     });
 });
+
+// Populate filter skills with common skills
+function populateFilterSkills() {
+    const container = document.getElementById('filter-skills-list');
+    if (!container) return;
+    
+    const commonSkills = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'CSS', 'HTML', 'TypeScript'];
+    commonSkills.forEach(skill => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+        label.innerHTML = `
+            <input type="checkbox" name="filter-skills" value="${skill}">
+            <span>${skill}</span>
+        `;
+        container.appendChild(label);
+    });
+}
+
+// Populate filter tech stack
+function populateFilterTechStack() {
+    const container = document.getElementById('filter-tech-list');
+    if (!container) return;
+    
+    const topTech = ['React', 'Vue', 'Angular', 'Node.js', 'Python', 'Django', 'MongoDB', 'Firebase'];
+    topTech.forEach(tech => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+        label.innerHTML = `
+            <input type="checkbox" name="filter-tech" value="${tech}">
+            <span>${tech}</span>
+        `;
+        container.appendChild(label);
+    });
+}

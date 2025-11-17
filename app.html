@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevDate - Find Developers</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/projects.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -24,6 +25,10 @@
                 <a href="#" onclick="showPage('discover')" class="nav-item active" data-page="discover">
                     <i class="fas fa-fire"></i>
                     <span>Discover</span>
+                </a>
+                <a href="#" onclick="showPage('projects')" class="nav-item" data-page="projects">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Projects</span>
                 </a>
                 <a href="#" onclick="showPage('matches')" class="nav-item" data-page="matches">
                     <i class="fas fa-heart"></i>
@@ -99,6 +104,161 @@
                 </div>
                 <div id="profile-view" class="profile-view"></div>
             </div>
+
+            <!-- Projects Feed Page -->
+            <div id="projects-page" class="page">
+                <div class="page-header">
+                    <h1>Project Collaborations</h1>
+                    <div class="header-actions">
+                        <button onclick="showPage('my-requests')" class="btn btn-secondary">
+                            <i class="fas fa-paper-plane"></i> Requests Sent
+                        </button>
+                        <button onclick="showPage('create-project')" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Project
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="projects-container">
+                    <div class="filters-sidebar">
+                        <h3><i class="fas fa-filter"></i> Filters</h3>
+                        
+                        <div class="filter-group">
+                            <label>Project Type</label>
+                            <select id="filter-project-type" class="form-input">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Skills</label>
+                            <div id="filter-skills-list" class="checkbox-grid">
+                                <!-- Common skills populated here -->
+                            </div>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Tech Stack</label>
+                            <div id="filter-tech-list" class="checkbox-grid">
+                                <!-- Top technologies -->
+                            </div>
+                        </div>
+
+                        <div class="filter-actions">
+                            <button onclick="applyProjectFilters()" class="btn btn-primary">Apply Filters</button>
+                            <button onclick="clearProjectFilters()" class="btn btn-secondary">Clear</button>
+                        </div>
+                    </div>
+
+                    <div id="projects-feed" class="projects-feed">
+                        <!-- Projects loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Project Page -->
+            <div id="create-project-page" class="page">
+                <div class="page-header">
+                    <h1>Create New Project</h1>
+                </div>
+                
+                <div class="create-project-container">
+                    <form id="create-project-form" onsubmit="event.preventDefault(); createProject();">
+                        <div class="form-group">
+                            <label for="project-title">Project Title *</label>
+                            <input type="text" id="project-title" class="form-input" placeholder="Enter project title" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="project-description">Description *</label>
+                            <textarea id="project-description" class="form-input" rows="5" placeholder="Describe your project, goals, and what you're looking for in collaborators..." required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="project-type">Project Type *</label>
+                            <select id="project-type" class="form-input" required>
+                                <option value="">Select project type</option>
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Required Skills * (Select at least one)</label>
+                            <div id="project-skills-list" class="checkbox-grid">
+                                <!-- Populated from user profile skills -->
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Tech Stack * (Select at least one)</label>
+                            <div id="tech-stack-list" class="checkbox-grid">
+                                <!-- Populated with common tech stacks -->
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="github-link">GitHub Repository (Optional)</label>
+                            <input type="url" id="github-link" class="form-input" placeholder="https://github.com/username/repo">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="drive-link">Google Drive Link (Optional)</label>
+                            <input type="url" id="drive-link" class="form-input" placeholder="https://drive.google.com/...">
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" onclick="showPage('projects')" class="btn btn-secondary">Cancel</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create Project
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Project Details Page -->
+            <div id="project-details-page" class="page">
+                <div id="project-details-container">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Project Requests Page -->
+            <div id="project-requests-page" class="page">
+                <div id="project-requests-container">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- My Requests Sent Page -->
+            <div id="my-requests-page" class="page">
+                <div class="page-header">
+                    <button onclick="showPage('projects')" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Projects
+                    </button>
+                    <h1>My Collaboration Requests</h1>
+                </div>
+                
+                <div class="my-requests-container">
+                    <div class="requests-tabs">
+                        <button class="tab-btn active" onclick="filterMyRequests('all')">
+                            All <span id="my-requests-all-count" class="count-badge">0</span>
+                        </button>
+                        <button class="tab-btn" onclick="filterMyRequests('pending')">
+                            Pending <span id="my-requests-pending-count" class="count-badge">0</span>
+                        </button>
+                        <button class="tab-btn" onclick="filterMyRequests('accepted')">
+                            Accepted <span id="my-requests-accepted-count" class="count-badge">0</span>
+                        </button>
+                        <button class="tab-btn" onclick="filterMyRequests('rejected')">
+                            Rejected <span id="my-requests-rejected-count" class="count-badge">0</span>
+                        </button>
+                    </div>
+                    <div id="my-requests-list" class="my-requests-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -145,6 +305,7 @@
     <script src="js/profile.js"></script>
     <script src="js/swipe.js"></script>
     <script src="js/chat.js"></script>
+    <script src="js/projects.js"></script>
     <script src="js/ai.js"></script>
     <script src="js/app.js"></script>
     <script src="js/animations.js"></script>
