@@ -1023,6 +1023,7 @@ input[type="checkbox"] {
 }
 
 .chat-window .chat-header {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 15px;
@@ -1140,6 +1141,23 @@ input[type="checkbox"] {
     color: var(--text-secondary);
     margin-top: 4px;
     padding: 0 5px;
+}
+
+/* Call message styles */
+.call-message {
+    font-style: italic;
+    opacity: 0.9;
+}
+
+.call-icon {
+    font-size: 1.1em;
+    margin-right: 4px;
+}
+
+.call-duration {
+    font-size: 0.85em;
+    margin-top: 4px;
+    opacity: 0.8;
 }
 
 .message-input-container {

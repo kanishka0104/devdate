@@ -172,6 +172,9 @@ async function openChatWindow(otherUserId) {
         
         console.log('Loaded user data for chat:', userData?.name);
         
+        // Store user info for call functionality
+        storeChatUserInfo(otherUserId, userData.name);
+        
         const chatUserInfo = document.getElementById('chat-user-info');
         if (!chatUserInfo) {
             throw new Error('Chat user info element not found');
@@ -304,12 +307,27 @@ function renderMessage(message, container) {
         ? formatTimeAgo(message.timestamp.seconds * 1000)
         : 'Just now';
     
-    bubble.innerHTML = `
-        <div class="message-content">
-            <p>${escapeHtml(message.message)}</p>
-        </div>
-        <span class="message-time">${timeStr}</span>
-    `;
+    // Check if it's a call message
+    if (message.type === 'call') {
+        const callIcon = message.callType === 'video' ? '📹' : '📞';
+        const callDirection = message.isOutgoing ? 'Outgoing' : 'Incoming';
+        const durationStr = formatDuration(message.duration);
+        
+        bubble.innerHTML = `
+            <div class="message-content call-message">
+                <p><span class="call-icon">${callIcon}</span> ${callDirection} ${message.callType} call</p>
+                <p class="call-duration">${durationStr}</p>
+            </div>
+            <span class="message-time">${timeStr}</span>
+        `;
+    } else {
+        bubble.innerHTML = `
+            <div class="message-content">
+                <p>${escapeHtml(message.message)}</p>
+            </div>
+            <span class="message-time">${timeStr}</span>
+        `;
+    }
     
     container.appendChild(bubble);
     
@@ -432,9 +450,82 @@ function formatTimeAgo(timestamp) {
     return Math.floor(seconds / 604800) + 'w ago';
 }
 
+// Format call duration
+function formatDuration(seconds) {
+    if (seconds < 60) {
+        return `${seconds}s`;
+    } else if (seconds < 3600) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    } else {
+        const hours = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+}
+
+// Save call history to chat
+window.saveCallHistory = async function(otherUserId, callType, duration, isOutgoing) {
+    try {
+        const matchId = [currentUser.uid, otherUserId].sort().join('_');
+        
+        await db.collection('matches').doc(matchId).collection('messages').add({
+            type: 'call',
+            callType: callType,
+            duration: duration,
+            isOutgoing: isOutgoing,
+            senderId: currentUser.uid,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log('Call history saved:', callType, duration + 's');
+    } catch (error) {
+        console.error('Error saving call history:', error);
+    }
+};
+
 // Escape HTML
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
+
+// Call functionality helpers
+let currentChatUserId = null;
+let currentChatUserName = null;
+
+// Store current chat user info when opening chat
+function storeChatUserInfo(userId, userName) {
+    currentChatUserId = userId;
+    currentChatUserName = userName;
+}
+
+// Start video call
+window.startVideoCall = function() {
+    if (!currentChatUserId || !currentChatUserName) {
+        console.error('No active chat user');
+        return;
+    }
+    
+    if (typeof window.startCall === 'function') {
+        window.startCall(currentChatUserId, currentChatUserName, 'video');
+    } else {
+        console.error('Call functionality not loaded');
+    }
+};
+
+// Start audio call
+window.startAudioCall = function() {
+    if (!currentChatUserId || !currentChatUserName) {
+        console.error('No active chat user');
+        return;
+    }
+    
+    if (typeof window.startCall === 'function') {
+        window.startCall(currentChatUserId, currentChatUserName, 'audio');
+    } else {
+        console.error('Call functionality not loaded');
+    }
+};

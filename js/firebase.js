@@ -9,6 +9,28 @@ let currentUser = null;
 let userProfile = null;
 let initialAuthCheck = true;
 
+// Handle redirect result for Google Sign-In
+auth.getRedirectResult().then(async (result) => {
+    if (result.user) {
+        console.log('Google sign-in redirect successful:', result.user.email);
+        
+        // Check if user has a profile
+        const userDoc = await db.collection('users').doc(result.user.uid).get();
+        
+        if (!userDoc.exists || !userDoc.data().bio) {
+            // New user or incomplete profile - redirect to profile setup
+            console.log('New Google user from redirect, redirecting to profile setup');
+            window.location.href = 'profile-setup.html';
+        } else {
+            // Existing user with complete profile - redirect to app
+            console.log('Existing Google user from redirect, redirecting to app');
+            window.location.href = 'app.html';
+        }
+    }
+}).catch((error) => {
+    console.error('Redirect result error:', error);
+});
+
 // Auth state listener
 auth.onAuthStateChanged(async (user) => {
     console.log('Auth state changed:', user ? user.uid : 'logged out');

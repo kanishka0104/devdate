@@ -1,0 +1,167 @@
+/* Auth Page Specific Styles - Keep Light Theme Always */
+
+/* Override theme variables for auth page only */
+#auth-container {
+    background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%) !important;
+}
+
+#auth-container .auth-box {
+    background: white !important;
+    color: #1f2937 !important;
+}
+
+#auth-container .auth-box h1 {
+    color: #1f2937 !important;
+}
+
+#auth-container .auth-box h2 {
+    color: #1f2937 !important;
+}
+
+#auth-container .auth-box p {
+    color: #6b7280 !important;
+}
+
+#auth-container .auth-box label {
+    color: #1f2937 !important;
+}
+
+#auth-container .form-group {
+    color: #1f2937 !important;
+}
+
+#auth-container input,
+#auth-container select,
+#auth-container textarea {
+    background: white !important;
+    color: #1f2937 !important;
+    border: 2px solid #e5e7eb !important;
+}
+
+#auth-container input::placeholder {
+    color: #9ca3af !important;
+}
+
+#auth-container input:focus,
+#auth-container select:focus,
+#auth-container textarea:focus {
+    background: white !important;
+    color: #1f2937 !important;
+}
+
+#auth-container .tab-btn {
+    color: #6b7280 !important;
+}
+
+#auth-container .tab-btn.active {
+    color: #6366f1 !important;
+}
+
+#auth-container .btn-oauth {
+    background: white !important;
+    color: #1f2937 !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+#auth-container .btn-oauth i {
+    color: #1f2937 !important;
+}
+
+#auth-container .btn-oauth:hover {
+    background: #f9fafb !important;
+    color: #1f2937 !important;
+}
+
+#auth-container .btn-google,
+#auth-container .btn-github {
+    background: white !important;
+    color: #1f2937 !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+#auth-container .btn-google i,
+#auth-container .btn-github i {
+    color: #1f2937 !important;
+}
+
+#auth-container .btn-google:hover,
+#auth-container .btn-github:hover {
+    background: #f9fafb !important;
+    color: #1f2937 !important;
+}
+
+#auth-container .btn-primary {
+    background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%) !important;
+    color: white !important;
+}
+
+#auth-container .btn-secondary {
+    background: white !important;
+    color: #1f2937 !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+#auth-container button {
+    color: white !important;
+}
+
+#auth-container .btn-oauth span {
+    color: #1f2937 !important;
+}
+
+#auth-container .divider {
+    color: #6b7280 !important;
+}
+
+#auth-container .divider::before,
+#auth-container .divider::after {
+    background: #e5e7eb !important;
+}
+
+#auth-container a {
+    color: #6366f1 !important;
+}
+
+#auth-container .tagline {
+    color: #6b7280 !important;
+}
+
+#auth-container .logo {
+    color: #1f2937 !important;
+}
+
+/* Prevent theme transitions on auth page */
+#auth-container * {
+    transition: none !important;
+}
+
+/* Password Toggle Styles */
+.password-field {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none !important;
+    border: none !important;
+    cursor: pointer;
+    padding: 8px;
+    color: #6b7280 !important;
+    transition: color 0.2s ease !important;
+}
+
+.password-toggle:hover {
+    color: #6366f1 !important;
+}
+
+.password-toggle i {
+    font-size: 1.1rem;
+    color: inherit !important;
+}
+
+.password-field input {
+    padding-right: 45px !important;
+}

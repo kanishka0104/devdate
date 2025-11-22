@@ -206,6 +206,7 @@ window.completeProfile = async function() {
 
         // Convert profile image to base64 if selected
         let profileImageUrl = '';
+        let resumeUrl = ''; // Initialize resumeUrl variable
         if (selectedImageFile) {
             console.log('Processing profile image...');
             console.log('File details:', {

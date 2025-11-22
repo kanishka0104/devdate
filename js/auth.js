@@ -96,9 +96,30 @@ async function loginWithGoogle() {
     showLoading();
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({
+            prompt: 'select_account' // Force account selection every time
+        });
+        
+        let result;
         // Try popup first, fallback to redirect if it fails
         try {
-            await auth.signInWithPopup(provider);
+            result = await auth.signInWithPopup(provider);
+            console.log('Google sign-in successful:', result.user.email);
+            
+            // Check if user has a profile
+            const userDoc = await db.collection('users').doc(result.user.uid).get();
+            
+            if (!userDoc.exists || !userDoc.data().bio) {
+                // New user or incomplete profile - redirect to profile setup
+                console.log('New Google user, redirecting to profile setup');
+                hideLoading();
+                window.location.href = 'profile-setup.html';
+            } else {
+                // Existing user with complete profile - redirect to app
+                console.log('Existing Google user, redirecting to app');
+                hideLoading();
+                window.location.href = 'app.html';
+            }
         } catch (popupError) {
             console.log('Popup blocked or failed, trying redirect...', popupError);
             // If popup fails, use redirect instead
@@ -107,7 +128,16 @@ async function loginWithGoogle() {
     } catch (error) {
         hideLoading();
         console.error('Google login error:', error);
-        alert('Error signing in with Google: ' + error.message);
+        
+        if (error.code === 'auth/popup-closed-by-user') {
+            // User closed the popup, do nothing
+            console.log('User closed Google sign-in popup');
+        } else if (error.code === 'auth/cancelled-popup-request') {
+            // Another popup was already open
+            console.log('Another popup already open');
+        } else {
+            alert('Error signing in with Google: ' + error.message);
+        }
     }
 }
 
@@ -162,4 +192,20 @@ function showError(element, message) {
     setTimeout(() => {
         element.style.display = 'none';
     }, 5000);
+}
+
+// Toggle password visibility
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(inputId + '-icon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
 }
