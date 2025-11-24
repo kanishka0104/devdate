@@ -470,7 +470,29 @@ window.saveCallHistory = async function(otherUserId, callType, duration, isOutgo
     try {
         const matchId = [currentUser.uid, otherUserId].sort().join('_');
         
-        await db.collection('matches').doc(matchId).collection('messages').add({
+        // Check if match document exists, if not create it
+        const matchRef = db.collection('matches').doc(matchId);
+        const matchDoc = await matchRef.get();
+        
+        if (!matchDoc.exists) {
+            // Create match document if it doesn't exist
+            await matchRef.set({
+                users: [currentUser.uid, otherUserId],
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastMessage: 'Call',
+                lastMessageTime: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            console.log('Created new match document for call history');
+        } else {
+            // Update existing match with last message info
+            await matchRef.update({
+                lastMessage: 'Call',
+                lastMessageTime: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        
+        // Add call history message
+        await matchRef.collection('messages').add({
             type: 'call',
             callType: callType,
             duration: duration,
