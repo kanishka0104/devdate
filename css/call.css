@@ -250,42 +250,84 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .call-modal {
+        /* Ensure full screen on mobile */
+        padding: 0;
+    }
+
     .local-video {
-        width: 120px;
-        height: 160px;
-        bottom: 130px;
-        right: 15px;
+        width: 100px;
+        height: 140px;
+        bottom: 100px;
+        right: 10px;
     }
 
     .call-controls {
-        bottom: 30px;
-        gap: 15px;
-        padding: 12px 20px;
+        bottom: 20px;
+        gap: 12px;
+        padding: 10px 15px;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
     .control-btn {
-        width: 50px;
-        height: 50px;
-        font-size: 1.2rem;
+        width: 55px;
+        height: 55px;
+        font-size: 1.3rem;
+    }
+
+    .end-call-btn {
+        width: 55px;
+        height: 55px;
     }
 
     .incoming-call-actions {
-        bottom: 110px;
-        flex-direction: column;
-        gap: 10px;
+        bottom: 80px;
+        flex-direction: row;
+        gap: 15px;
+        padding: 0 20px;
     }
 
     .incoming-call-actions .btn {
-        padding: 12px 30px;
+        padding: 14px 25px;
         font-size: 1rem;
+        flex: 1;
+        max-width: 150px;
     }
 
     .audio-call-avatar i {
-        font-size: 100px;
+        font-size: 80px;
     }
 
     .call-header h2 {
-        font-size: 1.2rem;
+        font-size: 1.3rem;
+    }
+
+    .call-header p {
+        font-size: 0.9rem;
+    }
+
+    .chat-call-buttons {
+        gap: 8px;
+    }
+
+    .call-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+
+    /* Prevent zoom on input focus (iOS) */
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+
+    /* Better touch targets for mobile */
+    .call-btn,
+    .control-btn,
+    .end-call-btn {
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
     }
 }
 

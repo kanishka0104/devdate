@@ -157,6 +157,22 @@ class CallService {
         return unsubscribe;
     }
 
+    // Listen for call status changes (for auto-disconnect)
+    listenForCallStatus(callId, onStatusChange) {
+        const callRef = this.db.collection('calls').doc(callId);
+        
+        const unsubscribe = callRef.onSnapshot(snapshot => {
+            const data = snapshot.data();
+            if (data && data.status) {
+                console.log('Call status changed:', data.status);
+                onStatusChange(data.status);
+            }
+        });
+
+        this.unsubscribers.push(unsubscribe);
+        return unsubscribe;
+    }
+
     // Get call details
     async getCall(callId) {
         try {

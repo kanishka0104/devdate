@@ -311,12 +311,20 @@ function renderMessage(message, container) {
     if (message.type === 'call') {
         const callIcon = message.callType === 'video' ? '📹' : '📞';
         const callDirection = message.isOutgoing ? 'Outgoing' : 'Incoming';
-        const durationStr = formatDuration(message.duration);
+        const callStatus = message.callStatus || 'completed';
+        
+        let statusText = '';
+        if (callStatus === 'disconnected') {
+            statusText = '<p class="call-duration" style="color: #ef4444;">Disconnected</p>';
+        } else {
+            const durationStr = formatDuration(message.duration);
+            statusText = `<p class="call-duration">${durationStr}</p>`;
+        }
         
         bubble.innerHTML = `
             <div class="message-content call-message">
                 <p><span class="call-icon">${callIcon}</span> ${callDirection} ${message.callType} call</p>
-                <p class="call-duration">${durationStr}</p>
+                ${statusText}
             </div>
             <span class="message-time">${timeStr}</span>
         `;
@@ -466,7 +474,7 @@ function formatDuration(seconds) {
 }
 
 // Save call history to chat
-window.saveCallHistory = async function(otherUserId, callType, duration, isOutgoing) {
+window.saveCallHistory = async function(otherUserId, callType, duration, isOutgoing, callStatus = 'completed') {
     try {
         const matchId = [currentUser.uid, otherUserId].sort().join('_');
         
@@ -474,19 +482,21 @@ window.saveCallHistory = async function(otherUserId, callType, duration, isOutgo
         const matchRef = db.collection('matches').doc(matchId);
         const matchDoc = await matchRef.get();
         
+        const lastMessage = callStatus === 'disconnected' ? 'Call disconnected' : 'Call';
+        
         if (!matchDoc.exists) {
             // Create match document if it doesn't exist
             await matchRef.set({
                 users: [currentUser.uid, otherUserId],
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastMessage: 'Call',
+                lastMessage: lastMessage,
                 lastMessageTime: firebase.firestore.FieldValue.serverTimestamp()
             });
             console.log('Created new match document for call history');
         } else {
             // Update existing match with last message info
             await matchRef.update({
-                lastMessage: 'Call',
+                lastMessage: lastMessage,
                 lastMessageTime: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
@@ -497,11 +507,12 @@ window.saveCallHistory = async function(otherUserId, callType, duration, isOutgo
             callType: callType,
             duration: duration,
             isOutgoing: isOutgoing,
+            callStatus: callStatus,
             senderId: currentUser.uid,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        console.log('Call history saved:', callType, duration + 's');
+        console.log('Call history saved:', callType, duration + 's', callStatus);
     } catch (error) {
         console.error('Error saving call history:', error);
     }

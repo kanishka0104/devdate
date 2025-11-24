@@ -92,6 +92,7 @@ async function startCall(receiverId, receiverName, callTypeParam) {
                     break;
                 case 'disconnected':
                     currentCallUI.updateStatus('Disconnected');
+                    setTimeout(() => endCurrentCall(), 3000);
                     break;
                 case 'failed':
                     currentCallUI.updateStatus('Connection failed');
@@ -99,6 +100,7 @@ async function startCall(receiverId, receiverName, callTypeParam) {
                     break;
                 case 'closed':
                     currentCallUI.updateStatus('Call ended');
+                    setTimeout(() => endCurrentCall(true), 500);
                     break;
             }
         };
@@ -107,13 +109,22 @@ async function startCall(receiverId, receiverName, callTypeParam) {
         currentCallService.listenForAnswer(currentCallId, async (answer) => {
             if (!answer) {
                 currentCallUI.updateStatus('Call rejected');
-                setTimeout(() => endCurrentCall(), 2000);
+                setTimeout(() => endCurrentCall(true), 2000);
                 return;
             }
 
             console.log('Got answer, setting remote description');
             await currentWebRTC.setRemoteAnswer(answer);
             currentCallUI.updateStatus('Connecting...');
+        });
+
+        // Listen for call status changes (for auto-disconnect)
+        currentCallService.listenForCallStatus(currentCallId, (status) => {
+            if (status === 'ended') {
+                console.log('Call ended by other user');
+                currentCallUI.updateStatus('Call ended');
+                setTimeout(() => endCurrentCall(true), 1000);
+            }
         });
 
         // Listen for remote ICE candidates
@@ -129,21 +140,29 @@ async function startCall(receiverId, receiverName, callTypeParam) {
 }
 
 // End the current call
-async function endCurrentCall() {
+async function endCurrentCall(skipFirestoreUpdate = false) {
     console.log('Ending current call...');
 
     // Calculate call duration
     let duration = 0;
+    let callStatus = 'completed';
+    
     if (callConnectedTime) {
         duration = Math.floor((Date.now() - callConnectedTime) / 1000); // in seconds
+        callStatus = 'completed';
+    } else if (callStartTime) {
+        // Call was attempted but never connected
+        callStatus = 'disconnected';
+        duration = 0;
     }
 
-    // Save call history to chat if call was connected
-    if (callConnectedTime && callReceiverId && typeof window.saveCallHistory === 'function') {
-        await window.saveCallHistory(callReceiverId, callType, duration, true);
+    // Save call history to chat (for both connected and disconnected calls)
+    if (callReceiverId && typeof window.saveCallHistory === 'function') {
+        await window.saveCallHistory(callReceiverId, callType, duration, true, callStatus);
     }
 
-    if (currentCallId && currentCallService) {
+    // Update Firestore to end the call (unless already ended by other user)
+    if (currentCallId && currentCallService && !skipFirestoreUpdate) {
         await currentCallService.endCall(currentCallId);
     }
 

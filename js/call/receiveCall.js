@@ -96,13 +96,15 @@ async function acceptIncomingCall(callData) {
                     break;
                 case 'disconnected':
                     currentCallUI.updateStatus('Disconnected');
+                    setTimeout(() => endReceiverCall(), 3000);
                     break;
                 case 'failed':
                     currentCallUI.updateStatus('Connection failed');
-                    setTimeout(() => endCurrentCall(), 2000);
+                    setTimeout(() => endReceiverCall(), 2000);
                     break;
                 case 'closed':
                     currentCallUI.updateStatus('Call ended');
+                    setTimeout(() => endReceiverCall(true), 500);
                     break;
             }
         };
@@ -121,6 +123,15 @@ async function acceptIncomingCall(callData) {
             await currentWebRTC.addIceCandidate(candidate);
         });
 
+        // Listen for call status changes (for auto-disconnect)
+        currentCallService.listenForCallStatus(callData.id, (status) => {
+            if (status === 'ended') {
+                console.log('Call ended by other user');
+                currentCallUI.updateStatus('Call ended');
+                setTimeout(() => endReceiverCall(true), 1000);
+            }
+        });
+
         // Clear pending call data
         window.pendingCallData = null;
         window.pendingCallUI = null;
@@ -130,6 +141,55 @@ async function acceptIncomingCall(callData) {
         alert('Failed to accept call: ' + error.message);
         endCurrentCall();
     }
+}
+
+// End receiver call
+async function endReceiverCall(skipFirestoreUpdate = false) {
+    console.log('Ending receiver call...');
+
+    // Calculate call duration
+    let duration = 0;
+    let callStatus = 'completed';
+    
+    if (receiverCallConnectedTime) {
+        duration = Math.floor((Date.now() - receiverCallConnectedTime) / 1000);
+        callStatus = 'completed';
+    } else if (receiverCallStartTime) {
+        callStatus = 'disconnected';
+        duration = 0;
+    }
+
+    // Save call history
+    if (receiverCallerId && typeof window.saveCallHistory === 'function') {
+        await window.saveCallHistory(receiverCallerId, receiverCallType, duration, false, callStatus);
+    }
+
+    // Update Firestore unless already ended by other user
+    if (currentCallId && currentCallService && !skipFirestoreUpdate) {
+        await currentCallService.endCall(currentCallId);
+    }
+
+    if (currentWebRTC) {
+        currentWebRTC.endCall();
+    }
+
+    if (currentCallService) {
+        currentCallService.cleanup();
+    }
+
+    if (currentCallUI) {
+        currentCallUI.closeModal();
+    }
+
+    currentWebRTC = null;
+    currentCallService = null;
+    currentCallUI = null;
+    currentCallId = null;
+    receiverCallStartTime = null;
+    receiverCallConnectedTime = null;
+    receiverCallerId = null;
+    receiverCallType = null;
+    window.currentWebRTC = null;
 }
 
 // Reject incoming call
@@ -150,6 +210,7 @@ async function rejectIncomingCall(callId) {
 window.acceptIncomingCall = acceptIncomingCall;
 window.rejectIncomingCall = rejectIncomingCall;
 window.startListeningForCalls = startListeningForCalls;
+window.endReceiverCall = endReceiverCall;
 
 // Auto-start listening when user is logged in
 if (typeof auth !== 'undefined') {
