@@ -310,7 +310,12 @@ function renderMessage(message, container) {
     // Check if it's a call message
     if (message.type === 'call') {
         const callIcon = message.callType === 'video' ? '📹' : '📞';
-        const callDirection = message.isOutgoing ? 'Outgoing' : 'Incoming';
+        
+        // Determine call direction based on current user perspective
+        // If current user is the sender, it's outgoing; otherwise incoming
+        const isOutgoingForCurrentUser = message.senderId === currentUser.uid;
+        const callDirection = isOutgoingForCurrentUser ? 'Outgoing' : 'Incoming';
+        
         const callStatus = message.callStatus || 'completed';
         
         let statusText = '';
@@ -501,12 +506,11 @@ window.saveCallHistory = async function(otherUserId, callType, duration, isOutgo
             });
         }
         
-        // Add call history message
+        // Add call history message (senderId determines direction for each user)
         await matchRef.collection('messages').add({
             type: 'call',
             callType: callType,
             duration: duration,
-            isOutgoing: isOutgoing,
             callStatus: callStatus,
             senderId: currentUser.uid,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()

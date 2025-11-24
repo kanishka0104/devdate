@@ -71,12 +71,18 @@ async function startCall(receiverId, receiverName, callTypeParam) {
         pc.onicecandidate = async (event) => {
             if (event.candidate && currentCallId) {
                 console.log('New ICE candidate:', event.candidate);
-                const candidateObj = {
-                    candidate: event.candidate.candidate,
-                    sdpMLineIndex: event.candidate.sdpMLineIndex,
-                    sdpMid: event.candidate.sdpMid
-                };
-                await currentCallService.addIceCandidate(currentCallId, candidateObj, true);
+                try {
+                    const candidateObj = {
+                        candidate: event.candidate.candidate,
+                        sdpMLineIndex: event.candidate.sdpMLineIndex,
+                        sdpMid: event.candidate.sdpMid
+                    };
+                    await currentCallService.addIceCandidate(currentCallId, candidateObj, true);
+                } catch (error) {
+                    console.error('Error adding ICE candidate:', error);
+                }
+            } else if (!event.candidate) {
+                console.log('All ICE candidates have been gathered');
             }
         };
 
@@ -102,6 +108,28 @@ async function startCall(receiverId, receiverName, callTypeParam) {
                     currentCallUI.updateStatus('Call ended');
                     setTimeout(() => endCurrentCall(true), 500);
                     break;
+            }
+        };
+
+        // Set connection timeout for mobile (30 seconds)
+        const connectionTimeout = setTimeout(() => {
+            if (pc.connectionState !== 'connected' && pc.connectionState !== 'closed') {
+                console.error('Connection timeout - state:', pc.connectionState);
+                console.error('ICE connection state:', pc.iceConnectionState);
+                console.error('ICE gathering state:', pc.iceGatheringState);
+                currentCallUI.updateStatus('Connection timeout - check your network');
+                setTimeout(() => endCurrentCall(), 3000);
+            }
+        }, 30000);
+
+        // Clear timeout on connection
+        const originalOnConnectionStateChange = pc.onconnectionstatechange;
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'connected') {
+                clearTimeout(connectionTimeout);
+            }
+            if (originalOnConnectionStateChange) {
+                originalOnConnectionStateChange();
             }
         };
 

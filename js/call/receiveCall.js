@@ -75,12 +75,18 @@ async function acceptIncomingCall(callData) {
         pc.onicecandidate = async (event) => {
             if (event.candidate && callData.id) {
                 console.log('New ICE candidate:', event.candidate);
-                const candidateObj = {
-                    candidate: event.candidate.candidate,
-                    sdpMLineIndex: event.candidate.sdpMLineIndex,
-                    sdpMid: event.candidate.sdpMid
-                };
-                await currentCallService.addIceCandidate(callData.id, candidateObj, false);
+                try {
+                    const candidateObj = {
+                        candidate: event.candidate.candidate,
+                        sdpMLineIndex: event.candidate.sdpMLineIndex,
+                        sdpMid: event.candidate.sdpMid
+                    };
+                    await currentCallService.addIceCandidate(callData.id, candidateObj, false);
+                } catch (error) {
+                    console.error('Error adding ICE candidate:', error);
+                }
+            } else if (!event.candidate) {
+                console.log('All ICE candidates have been gathered');
             }
         };
 
@@ -106,6 +112,28 @@ async function acceptIncomingCall(callData) {
                     currentCallUI.updateStatus('Call ended');
                     setTimeout(() => endReceiverCall(true), 500);
                     break;
+            }
+        };
+
+        // Set connection timeout for mobile (30 seconds)
+        const connectionTimeout = setTimeout(() => {
+            if (pc.connectionState !== 'connected' && pc.connectionState !== 'closed') {
+                console.error('Connection timeout - state:', pc.connectionState);
+                console.error('ICE connection state:', pc.iceConnectionState);
+                console.error('ICE gathering state:', pc.iceGatheringState);
+                currentCallUI.updateStatus('Connection timeout - check your network');
+                setTimeout(() => endReceiverCall(), 3000);
+            }
+        }, 30000);
+
+        // Clear timeout on connection
+        const originalOnConnectionStateChange = pc.onconnectionstatechange;
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'connected') {
+                clearTimeout(connectionTimeout);
+            }
+            if (originalOnConnectionStateChange) {
+                originalOnConnectionStateChange();
             }
         };
 
@@ -147,22 +175,8 @@ async function acceptIncomingCall(callData) {
 async function endReceiverCall(skipFirestoreUpdate = false) {
     console.log('Ending receiver call...');
 
-    // Calculate call duration
-    let duration = 0;
-    let callStatus = 'completed';
-    
-    if (receiverCallConnectedTime) {
-        duration = Math.floor((Date.now() - receiverCallConnectedTime) / 1000);
-        callStatus = 'completed';
-    } else if (receiverCallStartTime) {
-        callStatus = 'disconnected';
-        duration = 0;
-    }
-
-    // Save call history
-    if (receiverCallerId && typeof window.saveCallHistory === 'function') {
-        await window.saveCallHistory(receiverCallerId, receiverCallType, duration, false, callStatus);
-    }
+    // Don't save call history from receiver side - only caller saves it
+    // This prevents duplicate entries
 
     // Update Firestore unless already ended by other user
     if (currentCallId && currentCallService && !skipFirestoreUpdate) {

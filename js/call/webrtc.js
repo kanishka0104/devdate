@@ -9,8 +9,13 @@ class WebRTCManager {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' }
-            ]
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+            ],
+            iceCandidatePoolSize: 10,
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
         };
     }
 
@@ -24,10 +29,36 @@ class WebRTCManager {
     // Get user media (camera and/or microphone)
     async getUserMedia(callType) {
         try {
-            const constraints = callType === 'video' 
-                ? { video: true, audio: true }
-                : { video: false, audio: true };
+            // Check if getUserMedia is available
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('Your browser does not support camera/microphone access. Please use a modern browser.');
+            }
 
+            // Mobile-friendly constraints with fallbacks
+            const constraints = callType === 'video' 
+                ? { 
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 640, max: 1280 },
+                        height: { ideal: 480, max: 720 },
+                        frameRate: { ideal: 24, max: 30 }
+                    }, 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                }
+                : { 
+                    video: false, 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                };
+
+            console.log('Requesting media with constraints:', constraints);
             this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
             console.log('Got user media:', callType);
             return this.localStream;
@@ -56,7 +87,20 @@ class WebRTCManager {
         }
 
         try {
-            const offer = await this.peerConnection.createOffer();
+            // Monitor ICE gathering state
+            this.peerConnection.onicegatheringstatechange = () => {
+                console.log('ICE gathering state:', this.peerConnection.iceGatheringState);
+            };
+
+            // Monitor ICE connection state
+            this.peerConnection.oniceconnectionstatechange = () => {
+                console.log('ICE connection state:', this.peerConnection.iceConnectionState);
+            };
+
+            const offer = await this.peerConnection.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+            });
             await this.peerConnection.setLocalDescription(offer);
             console.log('Created offer:', offer);
             return offer;
@@ -73,8 +117,21 @@ class WebRTCManager {
         }
 
         try {
+            // Monitor ICE gathering state
+            this.peerConnection.onicegatheringstatechange = () => {
+                console.log('ICE gathering state:', this.peerConnection.iceGatheringState);
+            };
+
+            // Monitor ICE connection state
+            this.peerConnection.oniceconnectionstatechange = () => {
+                console.log('ICE connection state:', this.peerConnection.iceConnectionState);
+            };
+
             await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await this.peerConnection.createAnswer();
+            const answer = await this.peerConnection.createAnswer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+            });
             await this.peerConnection.setLocalDescription(answer);
             console.log('Created answer:', answer);
             return answer;
